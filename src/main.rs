@@ -56,6 +56,7 @@ fn is_emscripten(module: &WasmModule) -> bool {
 }
 
 fn is_compressed(module: &WasmModule) -> bool {
+    // many of the wasm modules have been compressed with this very distinctive pattern - what is it?
     module.any_imports_match(|i| i.module == "a" || i.name == "a")
         || module.any_imports_match(|i| i.module == "a" || i.name == "b")
         || module.any_imports_match(|i| i.module == "a" || i.name == "c")
@@ -78,6 +79,9 @@ fn is_go(module: &WasmModule) -> bool {
 
 fn is_assemblyscript(module: &WasmModule) -> bool {
     module.any_imports_match(|i| i.module == "env" && i.name == "abort")
+        // OK, so this one is *very* hacky! The hyphenate lib (https://github.com/mnater/Hyphenopoly) is found on a number of
+        // websites. It is written in AssemblyScript, and has a variety of different bundles. They all export the function 
+        // 'hyphenate'. 
         || module.any_exports_match(|e| e.name == "hyphenate")
 }
 
