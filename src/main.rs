@@ -68,8 +68,7 @@ fn is_likely_emscripten(module: &WasmModule) -> bool {
     // https://wsr-starfinder.com/js/stellarium-web-engine.06229ae9.wasm
     //  => https://github.com/Stellarium/stellarium-web-engine - code makes reference to using Emscripten
     (module.any_imports_match(|i| i.module == "a" && i.name == "a")
-        && module.any_imports_match(|i| i.module == "a" && i.name == "b")
-        && module.any_imports_match(|i| i.module == "a" && i.name == "c"))
+        && module.any_imports_match(|i| i.module == "a" && i.name == "b"))
 
     // another distinctive pattern, again, evidence suggests Emscripten
     // https://tx.me/
@@ -77,15 +76,24 @@ fn is_likely_emscripten(module: &WasmModule) -> bool {
     //
     // https://demo.harmonicvision.com - Emscripten mentioned in the page source
     //
-    //  https://webcamera.io - uses FFMpeg, which is an Emscripten project
-        || (module.any_imports_match(|i| i.module == "env" && i.name == "a")
-            && module.any_imports_match(|i| i.module == "env" && i.name == "b")
-            && module.any_imports_match(|i| i.module == "env" && i.name == "c"))
+    // https://webcamera.io - uses FFMpeg, which is an Emscripten project
+    || (module.any_imports_match(|i| i.module == "env" && i.name == "a")
+        && module.any_imports_match(|i| i.module == "env" && i.name == "b"))
+
+    // exporting malloc is a C giveaway!
+    || module.any_exports_match(|e| e.name == "malloc")
+
+    // standard memory management functions
+    || module.any_imports_match(|i| i.module == "env" && i.name == "__memory_base")
 }
 
 fn is_rust(module: &WasmModule) -> bool {
-    module.any_imports_match(|i| i.name.to_string().contains("wbindgen") || i.module == "wbg")
-        || module.any_exports_match(|e| e.name.to_string().contains("wbindgen"))
+    module.any_imports_match(|i| {
+        i.name.to_string().contains("wbindgen")
+            || i.name.to_string().contains("wbg")
+            || i.module == "wbg"
+            || i.module == "wbindgen"
+    }) || module.any_exports_match(|e| e.name.to_string().contains("wbindgen"))
 }
 
 fn is_blazor(module: &WasmModule) -> bool {
@@ -127,6 +135,11 @@ fn infer_language(buf: &Vec<u8>) -> Language {
     if is_likely_emscripten(&module) {
         return Language::Emscripten;
     }
+
+    // Unknown modules
+    // 2735d1055ef617dbb1e84cdfa8eb5a9c05f50201a7aa8c06d44533166124fec6.wasm => https://tikzjax.com / webjs / Pascal
+
+    // b8ea049ced002e39f3e32203c3d08f2efa964437887c92c39dd22e50945d7438.wasm => https://github.com/gasman/jsspeccy3 / AssemblyScript
     return Language::Unknown;
 }
 
