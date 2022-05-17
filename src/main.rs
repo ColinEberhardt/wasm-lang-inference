@@ -9,7 +9,8 @@ enum Language {
     AssemblyScript,
     Blazor,
     Unknown,
-    UnknownCompressed,
+    UnknownCompressedOne,
+    UnknownCompressedTwo,
     Go,
 }
 
@@ -55,11 +56,31 @@ fn is_emscripten(module: &WasmModule) -> bool {
     module.any_imports_match(|i| i.name.to_string().contains("emscripten"))
 }
 
-fn is_compressed(module: &WasmModule) -> bool {
-    // many of the wasm modules have been compressed with this very distinctive pattern - what is it?
-    module.any_imports_match(|i| i.module == "a" || i.name == "a")
-        || module.any_imports_match(|i| i.module == "a" || i.name == "b")
-        || module.any_imports_match(|i| i.module == "a" || i.name == "c")
+fn is_likely_emscripten(module: &WasmModule) -> bool {
+    // Many of the wasm modules have been compressed with this very distinctive pattern. From looking at a number of wasm modules
+    // and inspecting their contents, or the page that hosts them, it seems quite likely this is Emscripten. For example:
+    //
+    // https://tweet2doom.github.io/t2d-explorer.wasm
+    //   => https://github.com/tweet2doom/tweet2doom.github.io - strong evidence of Emscripten
+    //
+    // https://graphonline.ru/script/Graphoffline.Emscripten.wasm - the clue is in the filename!
+    //
+    // https://wsr-starfinder.com/js/stellarium-web-engine.06229ae9.wasm
+    //  => https://github.com/Stellarium/stellarium-web-engine - code makes reference to using Emscripten
+    (module.any_imports_match(|i| i.module == "a" && i.name == "a")
+        && module.any_imports_match(|i| i.module == "a" && i.name == "b")
+        && module.any_imports_match(|i| i.module == "a" && i.name == "c"))
+
+    // another distinctive pattern, again, evidence suggests Emscripten
+    // https://tx.me/
+    // => https://github.com/Samsung/rlottie/blob/master/src/wasm/rlottiewasm.cpp - this is a cool project ;-)
+    //
+    // https://demo.harmonicvision.com - Emscripten mentioned in the page source
+    //
+    //  https://webcamera.io - uses FFMpeg, which is an Emscripten project
+        || (module.any_imports_match(|i| i.module == "env" && i.name == "a")
+            && module.any_imports_match(|i| i.module == "env" && i.name == "b")
+            && module.any_imports_match(|i| i.module == "env" && i.name == "c"))
 }
 
 fn is_rust(module: &WasmModule) -> bool {
@@ -103,8 +124,8 @@ fn infer_language(buf: &Vec<u8>) -> Language {
     if is_assemblyscript(&module) {
         return Language::AssemblyScript;
     }
-    if is_compressed(&module) {
-        return Language::UnknownCompressed;
+    if is_likely_emscripten(&module) {
+        return Language::Emscripten;
     }
     return Language::Unknown;
 }
