@@ -9,8 +9,6 @@ enum Language {
     AssemblyScript,
     Blazor,
     Unknown,
-    UnknownCompressedOne,
-    UnknownCompressedTwo,
     Go,
 }
 
@@ -97,21 +95,18 @@ fn is_rust(module: &WasmModule) -> bool {
 }
 
 fn is_blazor(module: &WasmModule) -> bool {
-    module.any_imports_match(|i| i.name.to_string().contains("mono"))
+    module.any_imports_match(|i| i.name.to_string().contains("blazor"))
 }
 
 fn is_go(module: &WasmModule) -> bool {
     module.any_imports_match(|i| i.module == "go")
-        || module.any_imports_match(|i| i.name.to_string().contains("go"))
-        || module.any_imports_match(|e| e.name.to_string().contains("go_scheduler"))
 }
 
 fn is_assemblyscript(module: &WasmModule) -> bool {
-    module.any_imports_match(|i| i.module == "env" && i.name == "abort")
-        // OK, so this one is *very* hacky! The hyphenate lib (https://github.com/mnater/Hyphenopoly) is found on a number of
-        // websites. It is written in AssemblyScript, and has a variety of different bundles. They all export the function 
-        // 'hyphenate'. 
-        || module.any_exports_match(|e| e.name == "hyphenate")
+    // OK, so this one is *very* hacky! The hyphenate lib (https://github.com/mnater/Hyphenopoly) is found on a number of
+    // websites. It is written in AssemblyScript, and has a variety of different bundles. They all export the function
+    // 'hyphenate'.
+    module.any_exports_match(|e| e.name == "hyphenate")
 }
 
 fn infer_language(buf: &Vec<u8>) -> Language {
